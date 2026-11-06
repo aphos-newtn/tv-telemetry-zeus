@@ -1,12 +1,26 @@
 {
+  "added_names": [],
+  "added_percent_of_previous": 0.0,
+  "change_guard_override": false,
   "excluded_parent_or_protected_domains": [
     "myhomescreen.tv"
   ],
+  "input_exact_rules": 2,
+  "input_suffix_rules": 220,
   "input_unique_block_names": 222,
-  "note": "AdGuard suffix/regex matching is not available in RouterOS Adlist; no FWD allow rules are installed.",
+  "note": "This is an exact-hostname subset, not full AdGuard matching; regex/suffix coverage and allowlist precedence are absent.",
   "output_exact_names": 221,
+  "output_sha256": "dcd7de653f82fc769f0176d96d731e59b75f5a6ed2504d4e873bfe77c77c2f62",
+  "previous_exact_names": 221,
+  "protected_exact_exceptions": 1,
+  "protected_suffix_exceptions": 134,
+  "removed_names": [],
+  "removed_percent_of_previous": 0.0,
+  "suffix_rules_reduced_to_exact_names": 219,
   "unsupported_regex_rules": 7,
   "upstream": "https://raw.githubusercontent.com/Okazakee/tv-dns-blocklist/main/blocklist.txt",
+  "upstream_commit": "4554ce56ba70b1bbc74d31f5882ba45a83ce69f1",
+  "upstream_content_sha256": "a9deb83bcbe2b5754e9dbbb6551df907c9be57448493e6bf6c122a790a5af755",
   "upstream_protected_names": 135,
   "upstream_version": "2026.11.01"
 }

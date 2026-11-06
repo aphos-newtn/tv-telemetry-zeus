@@ -1,9 +1,8 @@
-# RouterOS Adlist — Okazakee TV telemetry (default/safe tier)
+# RouterOS Adlist - Okazakee TV telemetry (default tier)
 # Source: https://raw.githubusercontent.com/Okazakee/tv-dns-blocklist/main/blocklist.txt
 # Upstream version: 2026.11.01
-# Exact hostnames ONLY: RouterOS Adlist has no suffix or regex support.
-# Protected names and parent domains of protected names are excluded.
-# See README.md before subscribing. Do not use upstream AdGuard file directly.
+# Exact hostnames only: suffix / regex / allowlist behaviour is NOT preserved.
+# Protected hostnames and conflicting parents are excluded.
 
 7345023508.fxm9485766783.com
 7345023508.fxmconnect.com
