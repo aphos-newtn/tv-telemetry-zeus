@@ -1,101 +1,95 @@
 # Smart TV Telemetry Blocklist for MikroTik RouterOS
 
-An automatically updated DNS blocklist for **MikroTik RouterOS 7**, derived from the **default (non-strict)** [Okazakee TV DNS Blocklist](https://github.com/Okazakee/tv-dns-blocklist).
+A daily refreshed, **exact-hostname-only** DNS blocklist for MikroTik RouterOS 7 derived from the **default (non-strict)** [Okazakee TV DNS Blocklist](https://github.com/Okazakee/tv-dns-blocklist).
 
-It aims to reduce smart-TV advertising, Automatic Content Recognition (ACR), analytics and telemetry requests, while avoiding domains the upstream project identifies as necessary for everyday TV functionality.
+Targets telemetry, analytics, advertising and ACR endpoints for Sony BRAVIA, Samsung, Roku, LG, Hisense, Vizio, Fire TV, Philips, Xiaomi and Panasonic. Coverage depends on the TV and firmware; this is **not** equivalent to the original AdGuard Home list.
 
-The upstream project covers Sony BRAVIA, Samsung Tizen, Roku, LG webOS, Hisense VIDAA, Vizio SmartCast, Amazon Fire TV, Philips, Xiaomi and Panasonic. Actual protection depends on the specific TV, firmware and DNS requests it makes.
-
-## Subscribe from RouterOS
-
-The feed is published at:
-
-```text
-https://raw.githubusercontent.com/aphos-newtn/tv-telemetry-zeus/main/tv-telemetry-adlist.txt
-```
-
-Add it to an existing RouterOS DNS Adlist configuration:
+## Subscribe on RouterOS
 
 ```routeros
 /ip dns adlist add url="https://raw.githubusercontent.com/aphos-newtn/tv-telemetry-zeus/main/tv-telemetry-adlist.txt" ssl-verify=yes
 /ip dns adlist print detail
 ```
 
-Check that the new entry has a nonzero `name-count`. The feed can coexist with other Adlists; duplicate names do not need to be removed manually. Clients must use the router's DNS resolver for the list to take effect. **The repository and generated feed must be publicly accessible** for unauthenticated RouterOS downloads.
+Confirm the new entry has a nonzero `name-count`. Clients must send their DNS requests to the RouterOS resolver. Adlists do not prevent telemetry to fixed IPs or through separate encrypted DNS services. The repository must be public for unauthenticated RouterOS downloads.
 
-RouterOS checks subscribed Adlist URLs periodically (approximately every four hours). To request a refresh immediately:
+RouterOS checks remote Adlists periodically (approximately every four hours). To request a refresh:
 
 ```routeros
 /ip dns adlist reload
 ```
 
-To disable only this feed:
+To disable only this subscription:
 
 ```routeros
 /ip dns adlist disable [find where url="https://raw.githubusercontent.com/aphos-newtn/tv-telemetry-zeus/main/tv-telemetry-adlist.txt"]
 ```
 
-## What this conversion can—and cannot—do
+## Conversion limitations
 
-**This feed is an exact-hostname subset of the original list, not an equivalent translation of its AdGuard rules.**
+The original AdGuard rule `||samba.tv^` matches `samba.tv` **and subdomains**. RouterOS Adlist matches only the exact `samba.tv` entry. Subdomains such as `api.samba.tv` remain unblocked unless explicitly present in this or another list. Upstream regular expressions are also omitted.
 
-- AdGuard rules such as `||samba.tv^` match the named domain *and its subdomains*. The converted RouterOS feed contains `samba.tv` as an exact hostname; it does **not** automatically block `api.samba.tv`.
-- Upstream regular-expression rules cannot be represented in a standard RouterOS DNS Adlist and are omitted.
-- The converter excludes upstream protected hostnames, and removes any blocked parent domain when a protected hostname sits beneath it. This prioritises avoiding known functionality conflicts over maximum coverage.
-- The upstream project's explicit allow rules are **not** installed as RouterOS exceptions. Other DNS Adlists may still block a required service.
+Protected entries (`@@...$important`) are **not** imported as allowlist rules. The converter excludes explicitly protected names and any incompatible blocked parents; it also excludes specific blocked names beneath an upstream suffix-level exception. This prevents known direct conflicts within this feed, but **other subscribed Adlists may still block essential TV services**. For full suffix/regex/exception behaviour, use AdGuard Home or another compatible DNS filtering engine instead.
 
-Consequently, the feed is intended as a conservative supplement to existing DNS filtering. It cannot guarantee that a TV's telemetry is blocked or that every feature will continue working. DNS blocking also cannot prevent connections to hardcoded IP addresses or to independent encrypted DNS resolvers (such as DNS-over-HTTPS).
+## Automated updates and safety checks
 
-For full AdGuard-style suffix, regex and exception semantics, use a DNS filtering engine that implements those rules, rather than this converted RouterOS feed.
+GitHub Actions runs [the workflow](.github/workflows/update.yml) every day at **05:17 UTC**, with manual execution under **Actions → Update TV telemetry feed → Run workflow**. It:
 
-## Automatic updates
+1. Runs offline unit tests.
+2. Resolves the latest upstream commit affecting `blocklist.txt`, then downloads the file **pinned to that immutable commit**.
+3. Validates supported syntax, a dated upstream version, list size and protected rules.
+4. Converts supported entries and checks additions/deletions against the previously published feed.
+5. Stops automatically if **more than 10% of names were removed** or **more than 25% were added** relative to the previous feed.
+6. Records upstream commit SHA, input/output SHA-256 hashes, exact vs suffix-converted counts, skipped regex, protected exceptions and names added/removed in [`build-report.json`](build-report.json).
+7. Commits `tv-telemetry-adlist.txt` and `build-report.json` only when the published content or report changes.
 
-GitHub Actions runs the [update workflow](.github/workflows/update.yml) daily at **05:17 UTC** and supports manual runs through **Actions → Update Zeus TV telemetry feed → Run workflow**.
+A failed download, test or safety check fails the workflow before a commit. The last published feed therefore remains accessible to RouterOS. Watch Actions for failed scheduled runs; upstream format or rule-set changes may require maintenance.
 
-Each run:
+A stable upstream snapshot produces no repository changes. If the feed is unchanged but upstream content changes, the report is updated for auditability.
 
-1. Tests the converter.
-2. Downloads the current upstream *default* `blocklist.txt`.
-3. Validates the input, rejects unexpected syntax or abnormal list sizes, and builds the RouterOS feed.
-4. Writes `tv-telemetry-adlist.txt` and `build-report.json`.
-5. Commits the generated files only when their content changes.
+## Review and override a large upstream change
 
-A failed download or validation causes the workflow to fail without committing a replacement feed, so the last published version remains available. The report records the upstream version and the numbers of converted, protected, skipped and excluded entries. GitHub may suspend scheduled workflows in inactive repositories; check the Actions tab if updates stop.
+First inspect Okazakee's upstream diff and the existing published feed. The guard is intentionally conservative; an upstream removal of many obsolete entries can require manual review. After verifying the change, run locally:
 
-## Run or test locally
+```bash
+python3 -m unittest discover -s tests -v
+python3 scripts/build.py --allow-large-change
+```
 
-Requires Python 3; no third-party Python packages are needed.
+Review `git diff -- tv-telemetry-adlist.txt build-report.json` before committing. This flag bypasses **only the percentage change guard**, not syntax, version, or input-size validation. It is not used by the automated GitHub Actions workflow.
+
+## Local development
+
+Python 3.10+ is recommended; no third-party Python packages are required.
 
 ```bash
 python3 -m unittest discover -s tests -v
 python3 scripts/build.py
 ```
 
-The build creates or updates `tv-telemetry-adlist.txt` and `build-report.json` in the current working directory. It may also be run against a local input file:
+For a fully offline conversion, save a copy of upstream `blocklist.txt` locally and run:
 
 ```bash
 python3 scripts/build.py --source-file blocklist.txt --output-dir .
 ```
 
-## Troubleshooting
+The offline mode records a null upstream commit because no immutable GitHub commit was verified.
 
-Check the Adlist state and DNS log on RouterOS:
+## Verification and troubleshooting
 
 ```routeros
 /ip dns adlist print detail
 /log print where topics~"dns"
 ```
 
-From a client using the router for DNS, test a hostname contained in the generated feed (replace the placeholder with your router's DNS IP):
+To verify one listed hostname through your router:
 
 ```bash
 dig @ROUTER_DNS_IP samsungacr.com A +short
 ```
 
-A blocked A-record query normally returns `0.0.0.0`. This verifies only that particular DNS name is blocked through that resolver; it does not prove all TV telemetry is blocked. If a TV feature stops working, disable this feed temporarily to isolate it from other subscribed lists and report the specific hostname or feature affected.
+A blocked A query normally returns `0.0.0.0`. A DNS test proves only the individual name was blocked, not that all TV telemetry has stopped. If a device feature fails, disable this subscription temporarily and check for conflicts with other Adlists before submitting an issue.
 
-## Upstream project and attribution
+## Credits
 
-The filtering rules and research basis originate from [Okazakee/tv-dns-blocklist](https://github.com/Okazakee/tv-dns-blocklist), which is licensed under the MIT License. This repository provides a separate compatibility conversion for MikroTik RouterOS; it is not an official upstream distribution and does not claim equivalent filtering behaviour.
-
-For rule details, verification notes and upstream changes, consult the [upstream README](https://github.com/Okazakee/tv-dns-blocklist#readme), [sources](https://github.com/Okazakee/tv-dns-blocklist/blob/main/SOURCES.md) and [changelog](https://github.com/Okazakee/tv-dns-blocklist/blob/main/CHANGELOG.md).
+Rules and research originate with [Okazakee/tv-dns-blocklist](https://github.com/Okazakee/tv-dns-blocklist), licensed under the MIT License. This is a separate compatibility converter, not an official upstream publication. For upstream verification details and exceptions, consult their [README](https://github.com/Okazakee/tv-dns-blocklist), [sources](https://github.com/Okazakee/tv-dns-blocklist/blob/main/SOURCES.md) and [changelog](https://github.com/Okazakee/tv-dns-blocklist/blob/main/CHANGELOG.md).
