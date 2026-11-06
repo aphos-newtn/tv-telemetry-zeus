@@ -1,12 +1,12 @@
-name: Update Zeus TV telemetry feed
+name: Update TV telemetry feed
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   schedule:
     - cron: '17 5 * * *'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: tv-telemetry-feed
@@ -15,20 +15,24 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v7
       - name: Validate converter
         run: python3 -m unittest discover -s tests -v
-      - name: Fetch and convert latest upstream list
+      - name: Fetch and convert current upstream list
         run: python3 scripts/build.py
-      - name: Commit updated output if changed
+      - name: Commit updated feed and report only if changed
         run: |
-          git add tv-telemetry-adlist.txt build-report.json
+          git add -- tv-telemetry-adlist.txt build-report.json
           if git diff --cached --quiet; then
-            echo 'Feed already current; nothing to commit.'
+            echo 'No changes to publish.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'chore: refresh TV telemetry feed'
+          git commit -m 'chore: refresh RouterOS TV telemetry feed'
           git push
