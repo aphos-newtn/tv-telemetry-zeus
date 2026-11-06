@@ -8,9 +8,6 @@ on:
 permissions:
   contents: write
 
-permissions:
-  contents: write
-
 concurrency:
   group: tv-telemetry-feed
   cancel-in-progress: false
