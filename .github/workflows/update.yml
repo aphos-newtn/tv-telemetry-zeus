@@ -1,9 +1,12 @@
 name: Update Zeus TV telemetry feed
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: {}
   schedule:
     - cron: '17 5 * * *'
+
+permissions:
+  contents: write
 
 permissions:
   contents: write
